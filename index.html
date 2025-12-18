@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Smart MCQ Finder – Question Dropdown</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --bg: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  --card:#111827;
+  --text:#e5e7eb;
+  --opt:#020617;
+}
+.light{
+  --bg: linear-gradient(135deg,#e0e7ff,#fdf4ff);
+  --card:#ffffff;
+  --text:#111827;
+  --opt:#f9fafb;
+}
+body{
+  margin:0;
+  font-family:Arial;
+  background:var(--bg);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:var(--text);
+}
+.card{
+  background:var(--card);
+  width:100%;
+  max-width:1150px;
+  border-radius:16px;
+  padding:20px;
+}
+.top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.themeBtn{
+  background:none;
+  border:none;
+  font-size:22px;
+  cursor:pointer;
+  color:var(--text);
+}
+.controls{
+  display:flex;
+  gap:14px;
+  align-items:flex-end;
+  margin:12px 0;
+  flex-wrap:wrap;
+}
+select,button{
+  padding:8px 12px;
+  border-radius:8px;
+  border:none;
+}
+select{
+  min-width:220px;
+}
+button{
+  background:#2563eb;
+  color:#fff;
+  cursor:pointer;
+}
+.opt{
+  border:1px solid #374151;
+  padding:12px;
+  border-radius:10px;
+  margin:8px 0;
+  cursor:pointer;
+  background:var(--opt);
+}
+.correct{background:#064e3b}
+.wrong{background:#450a0a}
+.nav{
+  display:flex;
+  gap:10px;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="top">
+    <h2>🎯 Smart MCQ Finder</h2>
+    <button class="themeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+
+  <input type="file" id="file" accept=".json" multiple>
+
+  <!-- controls -->
+  <div class="controls">
+    <div>
+      <b>📂 Select Chapter</b><br>
+      <select id="chapterSelect"></select>
+    </div>
+
+    <div>
+      <b>📜 Select Question</b><br>
+      <select id="questionSelect">
+        <option>Select chapter first</option>
+      </select>
+    </div>
+
+    <button onclick="clearAll()">🗑️</button>
+  </div>
+
+  <!-- quiz -->
+  <div id="quiz" style="display:none">
+    <h3 id="q"></h3>
+    <div id="opts"></div>
+    <div class="nav">
+      <button onclick="prevQ()">⏮️</button>
+      <button onclick="nextQ()">⏭️</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let chapters=JSON.parse(localStorage.getItem("mcqChapters")||"{}");
+let Q=[],i=0,lock=false;
+
+function toggleTheme(){
+  document.body.classList.toggle("light");
+  document.querySelector(".themeBtn").innerText =
+    document.body.classList.contains("light") ? "☀️" : "🌙";
+}
+
+file.onchange=e=>{
+  [...e.target.files].forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      chapters[f.name]=JSON.parse(r.result);
+      localStorage.setItem("mcqChapters",JSON.stringify(chapters));
+      loadChapters();
+    };
+    r.readAsText(f);
+  });
+};
+
+function loadChapters(){
+  chapterSelect.innerHTML="";
+  Object.keys(chapters).forEach(n=>{
+    let o=document.createElement("option");
+    o.value=n;o.innerText=n;
+    chapterSelect.appendChild(o);
+  });
+  if(Object.keys(chapters).length) startChapter(chapterSelect.value);
+}
+
+chapterSelect.onchange=()=>startChapter(chapterSelect.value);
+
+function startChapter(n){
+  Q=chapters[n];
+  i=0;
+  quiz.style.display="block";
+  buildQuestionDropdown();
+  loadQ();
+}
+
+function buildQuestionDropdown(){
+  questionSelect.innerHTML="";
+  Q.forEach((x,idx)=>{
+    let o=document.createElement("option");
+    o.value=idx;
+    o.innerText=(idx+1)+". "+x.text.slice(0,50);
+    questionSelect.appendChild(o);
+  });
+  questionSelect.onchange=()=>{
+    i=parseInt(questionSelect.value);
+    loadQ();
+  };
+}
+
+function loadQ(){
+  lock=false;
+  q.innerText=(i+1)+". "+Q[i].text;
+  opts.innerHTML="";
+  Q[i].options.forEach((o,j)=>{
+    let d=document.createElement("div");
+    d.className="opt";
+    d.innerText=o;
+    d.onclick=()=>select(j);
+    opts.appendChild(d);
+  });
+}
+
+function select(j){
+  if(lock)return;lock=true;
+  document.querySelectorAll(".opt").forEach((b,k)=>{
+    if(k===Q[i].correctIndex)b.classList.add("correct");
+    else if(k===j)b.classList.add("wrong");
+  });
+  setTimeout(()=>{
+    i++;
+    if(i<Q.length){
+      questionSelect.value=i;
+      loadQ();
+    }
+  },500);
+}
+
+function prevQ(){
+  if(i>0){
+    i--;
+    questionSelect.value=i;
+    loadQ();
+  }
+}
+function nextQ(){
+  if(i<Q.length-1){
+    i++;
+    questionSelect.value=i;
+    loadQ();
+  }
+}
+
+function clearAll(){
+  if(confirm("Delete all saved chapters?")){
+    localStorage.clear();
+    chapters={};
+    chapterSelect.innerHTML="";
+    questionSelect.innerHTML="";
+    quiz.style.display="none";
+  }
+}
+
+loadChapters();
+</script>
+</body>
+</html>
